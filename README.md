@@ -1,6 +1,6 @@
 # Login App - Mobile II
 
-Una aplicación Flutter profesional que implementa un sistema de login con navegación a una pantalla de contactos, desarrollada para la materia Mobile II de TUDAI.
+Hola a todos, mi nombre es Juan Ignacio y esta es mi primera App desarrollada en Flutter para la materia Desarrollo de Aplicaciones Moviles II. En ella se cumple con los objetivos de realizar validaciones, funcionalidades CRUD y demas caracteristicas detalladas a continuacion. Se utilizo de IDE Cursor.
 
 ## 🎯 Características
 
