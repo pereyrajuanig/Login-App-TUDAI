@@ -118,14 +118,4 @@ flutter run
 
 ## 📚 Documentación Adicional
 
-- [Arquitectura del Proyecto](ARCHITECTURE.md)
-- [Funcionalidades CRUD](CRUD_FEATURES.md)
 - [Guía de Desarrollo](https://docs.flutter.dev/)
-
-## 👨‍💻 Autor
-
-Desarrollado para la materia Mobile II - TUDAI
-
-## 📄 Licencia
-
-Proyecto académico - Uso educativo

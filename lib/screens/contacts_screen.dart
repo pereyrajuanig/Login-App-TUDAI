@@ -5,6 +5,7 @@ import '../services/contact_service.dart'; // servicio CRUD
 import '../services/auth_service.dart'; // manejo de sesion
 import '../widgets/confirmation_dialog.dart'; // dialogo de confirmacion
 import 'add_edit_contact_screen.dart'; // pantalla de alta/edicion
+import 'login_screen.dart'; // pantalla de login para logout
 
 class ContactsScreen extends StatefulWidget { // pantalla principal de contactos
   const ContactsScreen({super.key}); // constructor
@@ -128,10 +129,16 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              // limpiar flag de sesion y volver al login
-              AuthService.logout();
-              Navigator.pop(context);
+            onPressed: () async {
+              // limpiar flag de sesion
+              await AuthService.logout();
+              // Navegar directamente a LoginScreen reemplazando toda la pila
+              if (context.mounted) {
+                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                  (route) => false, // elimina todas las rutas anteriores
+                );
+              }
             },
             tooltip: 'Cerrar Sesión',
           ),
@@ -206,36 +213,46 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
           // Lista de contactos
           Expanded(
             child: filteredContacts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _searchQuery.isEmpty ? Icons.person_add : Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[400],
+                ? SingleChildScrollView( // evita bottom overflow
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.6, // altura fija
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _searchQuery.isEmpty ? Icons.person_add : Icons.search_off,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _searchQuery.isEmpty 
+                                ? 'No hay contactos'
+                                : 'No se encontraron contactos',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32),
+                              child: Text(
+                                _searchQuery.isEmpty 
+                                  ? 'Toca el botón + para agregar uno'
+                                  : 'Intenta con otros términos de búsqueda',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty 
-                            ? 'No hay contactos'
-                            : 'No se encontraron contactos',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isEmpty 
-                            ? 'Toca el botón + para agregar uno'
-                            : 'Intenta con otros términos de búsqueda',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   )
                 : ListView.builder(
@@ -282,11 +299,14 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
                               color: Colors.grey[600],
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              contact.phone,
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
+                            Expanded( // evita overflow del teléfono
+                              child: Text(
+                                contact.phone,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis, // corta texto largo
                               ),
                             ),
                           ],

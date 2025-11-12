@@ -26,15 +26,16 @@ class _LoginScreenState extends State<LoginScreen> { //estado de la pantalla de 
   int _bgIndex = 0; // indice actual
   Timer? _bgTimer; // temporizador para rotacion
 
-
   @override
   void initState() { // inicia rotacion del fondo
     super.initState();
     if (_bgImages.length > 1) {
-      _bgTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-        setState(() {
-          _bgIndex = (_bgIndex + 1) % _bgImages.length;
-        });
+      _bgTimer = Timer.periodic(const Duration(seconds: 8), (_) { // aumentado a 8 segundos
+        if (mounted) { // verifica que el widget aun este montado
+          setState(() {
+            _bgIndex = (_bgIndex + 1) % _bgImages.length;
+          });
+        }
       });
     }
   }
@@ -48,21 +49,23 @@ class _LoginScreenState extends State<LoginScreen> { //estado de la pantalla de 
     super.dispose(); //liberar el estado de la pantalla de login
   }
 
-  void _validateLogin() { //validar las credenciales
+  Future<void> _validateLogin() async { //validar las credenciales
     if (_formKey.currentState!.validate()) {
       String username = _usernameController.text.trim(); //obtener el nombre de usuario y eliminar espacios en blanco
       String password = _passwordController.text.trim(); //obtener la contraseña y eliminar espacios en blanco
 
       if (AuthService.validateCredentials(username, password)) { //validar las credenciales
         // guardar flag de sesion para recordar login
-        AuthService.setLoggedIn(true);
-        // Credenciales correctas, navegar a la pantalla de contactos
-        Navigator.push( //navegar a la pantalla de contactos
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ContactsScreen(), //navegar a la pantalla de contactos
-          ),
-        );
+        await AuthService.setLoggedIn(true);
+        // Credenciales correctas, navegar a la pantalla de contactos reemplazando LoginScreen
+        if (context.mounted) {
+          Navigator.pushReplacement( //reemplaza LoginScreen con ContactsScreen
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ContactsScreen(),
+            ),
+          );
+        }
         
         // Limpiar los campos después del login exitoso
         _usernameController.clear(); //limpiar los campos de texto
@@ -87,9 +90,15 @@ class _LoginScreenState extends State<LoginScreen> { //estado de la pantalla de 
         children: [
           // Imagen de fondo a pantalla completa con resolución consistente
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 800),
-            switchInCurve: Curves.easeIn,
-            switchOutCurve: Curves.easeOut,
+            duration: const Duration(milliseconds: 1000), // transicion mas suave
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
             child: Container(
               key: ValueKey<String>(_bgImages[_bgIndex]),
               width: double.infinity,
@@ -145,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> { //estado de la pantalla de 
                       child: Form(
                         key: _formKey,
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -265,6 +275,7 @@ class _LoginScreenState extends State<LoginScreen> { //estado de la pantalla de 
                               'Credenciales de Demo:\nUsuario: ${AuthService.getDemoCredentials()['username']}\nContraseña: ${AuthService.getDemoCredentials()['password']}',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.95),
+                                fontSize: 14,
                                 shadows: const [
                                   Shadow(
                                     offset: Offset(1, 1),

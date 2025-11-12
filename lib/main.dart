@@ -34,8 +34,7 @@ class _Bootstrap extends StatefulWidget {
 }
 
 class _BootstrapState extends State<_Bootstrap> {
-  late final Future<void> _initFuture;
-  bool _loggedIn = false;
+  Future<bool> _initFuture = Future.value(false);
 
   @override
   void initState() {
@@ -43,22 +42,56 @@ class _BootstrapState extends State<_Bootstrap> {
     _initFuture = _init(); // inicializa persistencia y sesion
   }
 
-  Future<void> _init() async {
+  Future<bool> _init() async {
     await ContactService.init();
-    _loggedIn = await AuthService.isLoggedIn();
+    return await AuthService.isLoggedIn();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<void>(
+    return FutureBuilder<bool>(
       future: _initFuture,
       builder: (context, snapshot) {
+        // Muestra loading mientras se inicializa
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        return _loggedIn ? const ContactsScreen() : const LoginScreen();
+        
+        // Maneja errores
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _initFuture = _init();
+                      });
+                    },
+                    child: const Text('Reintentar'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Obtiene el estado de login (por defecto false si no hay datos)
+        final loggedIn = snapshot.data ?? false;
+        
+        // Debug: puedes comentar esto después
+        debugPrint('Estado de login: $loggedIn');
+        
+        // Muestra LoginScreen si no está logueado, ContactsScreen si lo está
+        return loggedIn ? const ContactsScreen() : const LoginScreen();
       },
     );
   }
