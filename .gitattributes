@@ -1,0 +1,17 @@
+# Configuración de finales de línea para el proyecto
+# Forzar LF (Unix) para todos los archivos de código
+*.dart text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+
+# Archivos binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+

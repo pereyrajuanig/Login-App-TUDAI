@@ -44,7 +44,7 @@ class _BootstrapState extends State<_Bootstrap> {
 
   Future<bool> _init() async {
     await ContactService.init();
-    return await AuthService.isLoggedIn();
+    return AuthService.isLoggedIn();
   }
 
   @override
@@ -86,9 +86,6 @@ class _BootstrapState extends State<_Bootstrap> {
         
         // Obtiene el estado de login (por defecto false si no hay datos)
         final loggedIn = snapshot.data ?? false;
-        
-        // Debug: puedes comentar esto después
-        debugPrint('Estado de login: $loggedIn');
         
         // Muestra LoginScreen si no está logueado, ContactsScreen si lo está
         return loggedIn ? const ContactsScreen() : const LoginScreen();

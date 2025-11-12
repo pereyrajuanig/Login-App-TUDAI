@@ -108,7 +108,6 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
 
   @override
   Widget build(BuildContext context) { // construye UI
-
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -480,6 +479,3 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
     );
   }
 }
-
-
-
