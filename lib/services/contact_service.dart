@@ -1,121 +1,86 @@
-import 'dart:convert'; // para jsonEncode/jsonDecode
-import 'package:shared_preferences/shared_preferences.dart'; // persistencia local
 import '../models/contact.dart'; // modelo de contacto
-import '../data/sample_contacts.dart'; // datos de ejemplo iniciales
+import '../database/database_helper.dart'; // helper de base de datos SQLite
 
-class ContactService { // servicio CRUD con persistencia local
-  static const String _prefsKey = 'contacts_json'; // clave en SharedPreferences
-  static SharedPreferences? _prefs; // instancia cacheada
+class ContactService { // servicio CRUD con persistencia en SQLite
+  static bool _initialized = false; // flag de inicialización
 
-  static List<Contact> _contacts = <Contact>[]; // estado interno
-  static int _nextId = 1; // contador de ids
-
-  // Inicializa el servicio: carga desde disco o si no existe, usa datos de ejemplo
+  // Inicializa el servicio: asegura que la base de datos esté lista
   static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    final String? jsonString = _prefs!.getString(_prefsKey);
-    if (jsonString != null) {
-      final List<dynamic> decoded = jsonDecode(jsonString) as List<dynamic>;
-      _contacts = decoded
-          .map((e) => Contact.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      _contacts = SampleContacts.getContacts();
-      await _persist();
+    if (!_initialized) {
+      await DatabaseHelper.instance.database; // inicializa la base de datos
+      _initialized = true;
     }
-    // Ajusta el siguiente id para no colisionar
-    _nextId = (_contacts.isEmpty
-            ? 0
-            : _contacts.map((c) => c.id).reduce((a, b) => a > b ? a : b)) +
-        1;
-  }
-
-  // Guarda en SharedPreferences la lista actual
-  static Future<void> _persist() async {
-    if (_prefs == null) return;
-    final List<Map<String, dynamic>> asMaps =
-        _contacts.map((c) => c.toJson()).toList();
-    await _prefs!.setString(_prefsKey, jsonEncode(asMaps));
   }
 
   /// Obtener todos los contactos
-  static List<Contact> getAllContacts() { // retorna copia para evitar mutaciones externas
-    return List.from(_contacts);
+  static Future<List<Contact>> getAllContacts() async {
+    await init();
+    return await DatabaseHelper.instance.getAllContacts();
   }
 
   /// Obtener un contacto por ID
-  static Contact? getContactById(int id) { // busca un contacto por id
-    try {
-      return _contacts.firstWhere((contact) => contact.id == id);
-    } catch (e) {
-      return null; // no encontrado
-    }
+  static Future<Contact?> getContactById(int id) async {
+    await init();
+    return await DatabaseHelper.instance.getContactById(id);
   }
 
   /// Crear un nuevo contacto
-  static Contact createContact({ // crea y agrega un nuevo contacto
+  static Future<Contact> createContact({ // crea y agrega un nuevo contacto
     required String name,
     required String phone,
     required String email,
-  }) {
+  }) async {
+    await init();
     final avatar = _generateAvatar(name); // iniciales del nombre
+    final nextId = await DatabaseHelper.instance.getNextId();
     final newContact = Contact(
-      id: _nextId++,
+      id: nextId,
       name: name,
       phone: phone,
       email: email,
       avatar: avatar,
     );
     
-    _contacts.add(newContact); // agrega a la lista
-    // persistir cambios (no se espera aqui para no bloquear la UI)
-    _persist();
+    await DatabaseHelper.instance.insertContact(newContact);
     return newContact; // retorna creado
   }
 
   /// Actualizar un contacto existente
-  static bool updateContact({ // actualiza un contacto existente
+  static Future<bool> updateContact({ // actualiza un contacto existente
     required int id,
     required String name,
     required String phone,
     required String email,
-  }) {
-    final index = _contacts.indexWhere((contact) => contact.id == id); // indice en la lista
-    if (index != -1) {
-      final avatar = _generateAvatar(name); // recalcula avatar si cambia nombre
-      _contacts[index] = Contact(
-        id: id,
-        name: name,
-        phone: phone,
-        email: email,
-        avatar: avatar,
-      );
-      _persist(); // guarda cambios
-      return true;
-    }
-    return false;
+  }) async {
+    await init();
+    final existingContact = await DatabaseHelper.instance.getContactById(id);
+    if (existingContact == null) return false;
+    
+    final avatar = _generateAvatar(name); // recalcula avatar si cambia nombre
+    final updatedContact = Contact(
+      id: id,
+      name: name,
+      phone: phone,
+      email: email,
+      avatar: avatar,
+    );
+    
+    final rowsAffected = await DatabaseHelper.instance.updateContact(updatedContact);
+    return rowsAffected > 0;
   }
 
   /// Eliminar un contacto
-  static bool deleteContact(int id) { // elimina un contacto por id
-    final index = _contacts.indexWhere((contact) => contact.id == id);
-    if (index != -1) {
-      _contacts.removeAt(index); // elimina por posicion
-      _persist(); // guarda cambios
-      return true;
-    }
-    return false; // no encontrado
+  static Future<bool> deleteContact(int id) async { // elimina un contacto por id
+    await init();
+    final rowsAffected = await DatabaseHelper.instance.deleteContact(id);
+    return rowsAffected > 0;
   }
 
-  /// Buscar contactos por nombre
-  static List<Contact> searchContacts(String query) { // filtra por nombre/telefono/email
-    if (query.isEmpty) return getAllContacts(); // sin query -> todo
-    
-    return _contacts.where((contact) {
-      return contact.name.toLowerCase().contains(query.toLowerCase()) ||
-             contact.phone.contains(query) ||
-             contact.email.toLowerCase().contains(query.toLowerCase());
-    }).toList();
+  /// Buscar contactos por nombre, teléfono o email
+  static Future<List<Contact>> searchContacts(String query) async { // filtra por nombre/telefono/email
+    await init();
+    if (query.isEmpty) return await getAllContacts(); // sin query -> todo
+    return await DatabaseHelper.instance.searchContacts(query);
   }
 
   /// Generar avatar basado en el nombre
@@ -128,11 +93,8 @@ class ContactService { // servicio CRUD con persistencia local
   }
 
   /// Obtener estadísticas de contactos
-  static Map<String, int> getContactStats() { // estadisticas simples
-    return {
-      'total': _contacts.length,
-      'withEmail': _contacts.where((c) => c.email.isNotEmpty).length,
-      'withPhone': _contacts.where((c) => c.phone.isNotEmpty).length,
-    };
+  static Future<Map<String, int>> getContactStats() async { // estadisticas simples
+    await init();
+    return await DatabaseHelper.instance.getContactStats();
   }
 }

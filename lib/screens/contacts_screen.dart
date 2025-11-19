@@ -15,14 +15,24 @@ class ContactsScreen extends StatefulWidget { // pantalla principal de contactos
 }
 
 class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de la pantalla
-  List<Contact> contacts = ContactService.getAllContacts(); // lista en memoria
+  List<Contact> contacts = []; // lista en memoria
   final TextEditingController _searchController = TextEditingController(); // controlador busqueda
   String _searchQuery = ''; // texto de busqueda actual
+  List<Contact> _filteredContacts = []; // contactos filtrados
 
   @override
   void initState() { // configurar listeners
     super.initState();
     _searchController.addListener(_onSearchChanged); // escucha cambios en busqueda
+    _loadContacts(); // carga contactos al iniciar
+  }
+
+  Future<void> _loadContacts() async {
+    final loadedContacts = await ContactService.getAllContacts();
+    setState(() {
+      contacts = loadedContacts;
+      _updateFilteredContacts();
+    });
   }
 
   @override
@@ -35,18 +45,27 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
     setState(() {
       _searchQuery = _searchController.text;
     });
+    _updateFilteredContacts();
   }
 
-  List<Contact> get filteredContacts { // aplica filtro de busqueda
+  Future<void> _updateFilteredContacts() async { // aplica filtro de busqueda
     if (_searchQuery.isEmpty) {
-      return contacts;
+      setState(() {
+        _filteredContacts = contacts;
+      });
+    } else {
+      final results = await ContactService.searchContacts(_searchQuery);
+      setState(() {
+        _filteredContacts = results;
+      });
     }
-    return ContactService.searchContacts(_searchQuery);
   }
 
-  void _refreshContacts() { // recarga desde servicio
+  Future<void> _refreshContacts() async { // recarga desde servicio
+    final loadedContacts = await ContactService.getAllContacts();
     setState(() {
-      contacts = ContactService.getAllContacts();
+      contacts = loadedContacts;
+      _updateFilteredContacts();
     });
   }
 
@@ -86,7 +105,7 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
     );
 
     if (confirmed == true) {
-      final success = ContactService.deleteContact(contact.id);
+      final success = await ContactService.deleteContact(contact.id);
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -174,7 +193,7 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${filteredContacts.length} contactos disponibles',
+                  '${_filteredContacts.length} contactos disponibles',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.blue[100],
@@ -211,7 +230,7 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
 
           // Lista de contactos
           Expanded(
-            child: filteredContacts.isEmpty
+            child: _filteredContacts.isEmpty
                 ? SingleChildScrollView( // evita bottom overflow
                     child: Container(
                       height: MediaQuery.of(context).size.height * 0.6, // altura fija
@@ -256,9 +275,9 @@ class _ContactsScreenState extends State<ContactsScreen> { // estado y logica de
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: filteredContacts.length,
+                    itemCount: _filteredContacts.length,
                     itemBuilder: (context, index) {
-                      final contact = filteredContacts[index];
+                      final contact = _filteredContacts[index];
                 return Card( // item visual de cada contacto
                   margin: const EdgeInsets.only(bottom: 12),
                   elevation: 2,

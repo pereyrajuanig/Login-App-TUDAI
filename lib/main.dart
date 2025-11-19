@@ -42,6 +42,7 @@ class _BootstrapState extends State<_Bootstrap> {
     _initFuture = _init(); // inicializa persistencia y sesion
   }
 
+  // Inicializa el servicio de contactos y verifica si hay una sesion activa
   Future<bool> _init() async {
     await ContactService.init();
     return AuthService.isLoggedIn();

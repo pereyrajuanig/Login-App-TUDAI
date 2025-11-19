@@ -37,7 +37,7 @@ class _AddEditContactScreenState extends State<AddEditContactScreen> { // estado
     super.dispose();
   }
 
-  void _saveContact() { // valida y guarda (crear/actualizar)
+  Future<void> _saveContact() async { // valida y guarda (crear/actualizar)
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text.trim();
       final phone = _phoneController.text.trim();
@@ -45,7 +45,7 @@ class _AddEditContactScreenState extends State<AddEditContactScreen> { // estado
 
       if (isEditing) {
         // Actualizar contacto existente
-        final success = ContactService.updateContact(
+        final success = await ContactService.updateContact(
           id: widget.contact!.id,
           name: name,
           phone: phone,
@@ -53,37 +53,45 @@ class _AddEditContactScreenState extends State<AddEditContactScreen> { // estado
         );
         
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Contacto actualizado exitosamente'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Contacto actualizado exitosamente'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Error al actualizar el contacto'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error al actualizar el contacto'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } else {
         // Crear nuevo contacto
-        ContactService.createContact(
+        await ContactService.createContact(
           name: name,
           phone: phone,
           email: email,
         );
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Contacto creado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Contacto creado exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
       
-      Navigator.pop(context, true); // indica a la pantalla anterior que refresque
+      if (context.mounted) {
+        Navigator.pop(context, true); // indica a la pantalla anterior que refresque
+      }
     }
   }
 
